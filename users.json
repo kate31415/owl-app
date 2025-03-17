@@ -1,0 +1,24 @@
+{
+    "kate": {
+        "password": "31415",
+        "progress": {
+            "eagle": 1,
+            "dog": 1,
+            "cat": 2
+        },
+        "dictionary": {
+            "eagle": {
+                "definition": "a large, strong bird with a curved beak that eats meat and can see very well",
+                "example": "She finished the day one stroke behind the leader, having shot the only eagle of the tournament so far."
+            },
+            "dog": {
+                "definition": "a common animal with four legs, especially kept by people as a pet or to hunt or guard things:",
+                "example": "my pet dog"
+            },
+            "cat": {
+                "definition": "a small animal with fur, four legs, a tail, and claws, usually kept as a pet or for catching mice",
+                "example": "the cat family"
+            }
+        }
+    }
+}
