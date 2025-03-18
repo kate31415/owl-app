@@ -63,29 +63,39 @@ class Learning:
     #     except Exception as e:  
     #         print(f"Ошибка при открытии страницы: {e}")  
 
-    def add_word_from_dict(self, word):  
-        word_info = self.dict.fetch_word_info(word)  
-        example = word_info["example"]  
-        transcription = word_info["transcription"]  
-        translation = word_info["translation"]  
+    def add_word_from_dict(self, word):
+        word_info = self.dict.fetch_word_info(word)
+        if word_info is None:
+            return {
+                "example": "Слово не найдено",
+                "transcription": "Транскрипция не найдена",
+                "translation": "Перевод не найден"
+            }
+        return word_info
+
+    # def add_word_from_dict(self, word):  
+    #     word_info = self.dict.fetch_word_info(word)  
+    #     example = word_info["example"]  
+    #     transcription = word_info["transcription"]  
+    #     translation = word_info["translation"]  
         
-        print(  
-            f"Слово '{word}' добавлено!\n"  
-            f"Транскрипция: {transcription}\n"  
-            f"Перевод: {translation}\n"  
-            f"Пример: {example}"  
-        )  
+    #     print(  
+    #         f"Слово '{word}' добавлено!\n"  
+    #         f"Транскрипция: {transcription}\n"  
+    #         f"Перевод: {translation}\n"  
+    #         f"Пример: {example}"  
+    #     )  
 
 
-# Основная функция для проверки работы кода  
-def main():  
-    learning = Learning()  
-    word = input("Введите слово для парсинга: ")  
-    learning.add_word_from_dict(word)  
-    learning.view_word_page(word)  
+# # Основная функция для проверки работы кода  
+# def main():  
+#     learning = Learning()  
+#     word = input("Введите слово для парсинга: ")  
+#     learning.add_word_from_dict(word)  
+#     learning.view_word_page(word)  
 
-if __name__ == "__main__":  
-    main()  
+# if __name__ == "__main__":  
+#     main()  
 
         # word_info = self.dict.fetch_word_info(word)  
         # example = textwrap.wrap(word_info["example"], 50)  
