@@ -2,6 +2,11 @@ import customtkinter
 from Dict import Dict, Learning
 import json
 import os
+import webbrowser
+import requests
+from bs4 import BeautifulSoup
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
 class User:
@@ -21,12 +26,6 @@ class User:
 
     def get_progress(self):
         return self.progress
-
-
-import os
-import webbrowser
-import requests
-from bs4 import BeautifulSoup
 
 
 class Dict:
