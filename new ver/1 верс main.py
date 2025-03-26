@@ -1,9 +1,6 @@
 import customtkinter
-from tkinter import messagebox
-from user import User, ProgressTracker
 from Dict import Dict, Learning
 from UserStats import UserStats
-
 import json
 import os
 import textwrap
@@ -12,7 +9,82 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import datetime
 import random
-import webbrowser
+
+
+class User:
+    def __init__(self, username, password):
+        self.username = username
+        self.password = password
+        self.progress = {}
+        self.dictionary = {}
+
+    def add_word(self, word, definition="", example="", transcription="", translation=""):
+        if word not in self.progress:
+            self.progress[word] = 0
+        self.progress[word] += 1
+        if word not in self.dictionary:
+            self.dictionary[word] = {
+                "definition": definition,
+                "example": example,
+                "transcription": transcription,
+                "translation": translation
+            }
+
+    def get_progress(self):
+        return self.progress
+
+    def get_word_info(self, word):
+        return self.dictionary.get(word, {"definition": "Слово не найдено", "example": "", "transcription": "", "translation": ""})
+
+# fetch_word_info()
+
+class ProgressTracker:
+    def __init__(self, data_file="users.json"):
+        self.data_file = data_file
+        self.users = {}
+        self.user_stats = UserStats()
+        self.load_data()
+
+    def load_data(self):
+        if os.path.exists(self.data_file):
+            with open(self.data_file, "r") as file:
+                data = json.load(file)
+                for username, user_data in data.items():
+                    user = User(username, user_data["password"])
+                    user.progress = user_data.get("progress", {})
+                    user.dictionary = user_data.get("dictionary", {})
+                    self.users[username] = user
+
+    def save_data(self):
+        data = {
+            username: {
+                "password": user.password,
+                "progress": user.progress,
+                "dictionary": user.dictionary,
+            }
+            for username, user in self.users.items()
+        }
+        with open(self.data_file, "w") as file:
+            json.dump(data, file, indent=4)
+
+    def register_user(self, username, password):
+        if username in self.users:
+            return False
+        self.users[username] = User(username, password)
+        self.save_data()
+        return True
+
+    def authenticate(self, username, password):
+        user = self.users.get(username)
+        if user and user.password == password:
+            return user
+        return None
+
+    def update_study_time(self, username, study_duration):
+        self.user_stats.update_study_time(username, study_duration)
+
+    def get_user_stats(self, username):
+        return self.user_stats.get_user_stats(username)
 
 
 class App(customtkinter.CTk):
@@ -49,10 +121,10 @@ class App(customtkinter.CTk):
             username = username_entry.get()
             password = password_entry.get()
             if self.tracker.register_user(username, password):
-                messagebox.showinfo("Успешно", "Регистрация успешна!")
+                self.show_message("Регистрация успешна!")
                 self.create_main_menu()
             else:
-                messagebox.showerror("Ошибка", "Пользователь уже существует.")
+                self.show_message("Пользователь уже существует.")
 
         register_button = customtkinter.CTkButton(self, text="Зарегистрироваться", command=handle_register)
         register_button.pack(pady=10)
@@ -76,7 +148,7 @@ class App(customtkinter.CTk):
                 self.current_user = user
                 self.user_menu()
             else:
-                messagebox.showerror("Ошибка", "Неверное имя пользователя или пароль.")
+                self.show_message("Неверное имя пользователя или пароль.")
 
         login_button = customtkinter.CTkButton(self, text="Войти", command=handle_login)
         login_button.pack(pady=10)
@@ -100,8 +172,10 @@ class App(customtkinter.CTk):
         add_word_window = customtkinter.CTkToplevel(self)
         add_word_window.title("Добавить слово")
         add_word_window.geometry("400x400")
+
         label = customtkinter.CTkLabel(add_word_window, text="Добавить слово из словаря", font=("Arial", 20))
         label.pack(pady=10)
+
         word_entry = customtkinter.CTkEntry(add_word_window, placeholder_text="Введите слово")
         word_entry.pack(pady=5)
 
@@ -109,31 +183,19 @@ class App(customtkinter.CTk):
             word = word_entry.get().strip().lower()
             if word:
                 start_time = datetime.datetime.now()
-                word_info = self.learning.add_word_from_dict(word)
+                self.learning.add_word_from_dict(self, word)
                 end_time = datetime.datetime.now()
                 study_duration = (end_time - start_time).seconds
                 self.tracker.update_study_time(self.current_user.username, study_duration)
-                if word_info:
-                    self.current_user.add_word(
-                        word,
-                        definition="",  # Предполагается, что определение не используется
-                        example=word_info.get("example", ""),
-                        transcription=word_info.get("transcription", ""),
-                        translation=word_info.get("translation", "")
-                    )
-                    messagebox.showinfo("Успешно", f"Слово '{word}' добавлено!")
-                    reward_message = self.tracker.user_stats.check_rewards(self.current_user.username)
-                    if reward_message:
-                        messagebox.showinfo("Награда", reward_message)
-                else:
-                    messagebox.showerror("Ошибка", f"Слово '{word}' не найдено.")
+                reward_message = self.tracker.user_stats.check_rewards(self.current_user.username)
+                if reward_message:
+                    self.show_message(reward_message)
                 add_word_window.destroy()
                 self.user_menu()
-            else:
-                messagebox.showerror("Ошибка", "Введите слово.")
 
         add_button = customtkinter.CTkButton(add_word_window, text="Добавить", command=handle_add_word)
         add_button.pack(pady=10)
+
         back_button = customtkinter.CTkButton(add_word_window, text="Назад", command=add_word_window.destroy)
         back_button.pack(pady=10)
 
@@ -141,14 +203,19 @@ class App(customtkinter.CTk):
         progress_window = customtkinter.CTkToplevel(self)
         progress_window.title("Прогресс")
         progress_window.geometry("800x600")
+
         label = customtkinter.CTkLabel(progress_window, text="Ваш прогресс:", font=("Arial", 20))
         label.pack(pady=10)
+
         search_frame = customtkinter.CTkFrame(progress_window)
         search_frame.pack(pady=10, padx=10, fill="x")
+
         search_entry = customtkinter.CTkEntry(search_frame, placeholder_text="Поиск слова")
         search_entry.pack(side="left", padx=10, fill="x", expand=True)
+
         search_button = customtkinter.CTkButton(search_frame, text="Поиск", command=lambda: search_words(search_entry.get()))
         search_button.pack(side="right", padx=10)
+
         words_frame = customtkinter.CTkScrollableFrame(progress_window)
         words_frame.pack(pady=10, padx=10, fill="both", expand=True)
 
@@ -180,13 +247,15 @@ class App(customtkinter.CTk):
                     word_button.pack(pady=5, fill="x")
 
         display_words()
+
         back_button = customtkinter.CTkButton(progress_window, text="Назад", command=progress_window.destroy)
         back_button.pack(pady=10)
 
     def show_word_info(self, word):
         word_info_window = customtkinter.CTkToplevel(self)
         word_info_window.title(f"Информация о слове: {word}")
-        word_info_window.geometry("500x00")
+        word_info_window.geometry("400x400")
+
         word_info = self.current_user.get_word_info(word)
         definition = word_info["definition"]
         example = word_info["example"]
@@ -196,21 +265,20 @@ class App(customtkinter.CTk):
         label = customtkinter.CTkLabel(word_info_window, text=f"Слово: {word}", font=("Arial", 20))
         label.pack(pady=10)
 
-        if example == "Слово не найдено":
-            error_label = customtkinter.CTkLabel(word_info_window, text="Слово не найдено в словаре.", font=("Arial", 14), text_color="red")
-            error_label.pack(pady=5)
-        else:
-            # definition_label = customtkinter.CTkLabel(word_info_window, text=textwrap.fill(f"Определение: {definition}", width=50), font=("Arial", 14))
-            # definition_label.pack(pady=5)
+        definition_label = customtkinter.CTkLabel(word_info_window, textwrap.wrap(text=f"Определение: {definition}", font=("Arial", 14)))
+        definition_label.pack(pady=5)
 
-            transcription_label = customtkinter.CTkLabel(word_info_window, text=f"Транскрипция: {transcription}", font=("Arial", 14))
-            transcription_label.pack(pady=5)
+        transcription_label = customtkinter.CTkLabel(word_info_window, text=f"Транскрипция: {transcription}", font=("Arial", 14))
+        transcription_label.pack(pady=5)
 
-            translation_label = customtkinter.CTkLabel(word_info_window, text=textwrap.fill(f"Перевод: {translation}", width=50), font=("Arial", 14))
-            translation_label.pack(pady=5)
+        translation_label = customtkinter.CTkLabel(word_info_window, text=f"Перевод: {translation}", font=("Arial", 14))
+        translation_label.pack(pady=5)
 
-            example_label = customtkinter.CTkLabel(word_info_window, text=textwrap.fill(f"Пример: {example}", width=50), font=("Arial", 14))
-            example_label.pack(pady=5)
+        example_label = customtkinter.CTkLabel(word_info_window, text=f"Пример: {example}", font=("Arial", 14))
+        example_label.pack(pady=5)
+
+        view_page_button = customtkinter.CTkButton(word_info_window, text="Просмотреть страницу слова", command=lambda: self.learning.view_word_page(word))
+        view_page_button.pack(pady=10)
 
         back_button = customtkinter.CTkButton(word_info_window, text="Назад", command=word_info_window.destroy)
         back_button.pack(pady=10)
@@ -219,12 +287,14 @@ class App(customtkinter.CTk):
         progress_window = customtkinter.CTkToplevel(self)
         progress_window.title("Диаграмма прогресса")
         progress_window.geometry("800x600")
+
         progress = self.current_user.get_progress()
         if not progress:
-            messagebox.showinfo("Информация", "Нет данных для отображения.")
+            self.show_message("Нет данных для отображения.")
             progress_window.destroy()
             self.user_menu()
             return
+
         fig, ax = plt.subplots(figsize=(6, 4))
         words = list(progress.keys())
         counts = list(progress.values())
@@ -236,6 +306,7 @@ class App(customtkinter.CTk):
         canvas = FigureCanvasTkAgg(fig, master=progress_window)
         canvas.draw()
         canvas.get_tk_widget().pack(pady=10, padx=10, fill="both", expand=True)
+
         back_button = customtkinter.CTkButton(progress_window, text="Назад", command=progress_window.destroy)
         back_button.pack(pady=10)
 
@@ -248,7 +319,9 @@ class App(customtkinter.CTk):
             widget.destroy()
 
     def show_message(self, message):
-        messagebox.showinfo("Сообщение", message)
+        label = customtkinter.CTkLabel(self, text=message, font=("Arial", 14))
+        label.pack(pady=10)
+
 
 if __name__ == "__main__":
     customtkinter.set_appearance_mode("System")
