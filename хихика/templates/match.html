@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head><title>Соедини пары</title></head>
+<body>
+  <h1>Соедини слова с переводами</h1>
+  <form method="post">
+    {% for i in range(4) %}
+      <label>{{ words[i] }}:
+        <select name="answer{{ i }}">
+          {% for option in translations %}
+            <option value="{{ option }}">{{ option }}</option>
+          {% endfor %}
+        </select>
+      </label><br><br>
+    {% endfor %}
+    <button type="submit">Проверить</button>
+  </form>
+  {% if result %}
+    <p>{{ result }}</p>
+    <a href="/match">Попробовать ещё</a>
+  {% endif %}
+  <a href="/">На главную</a>
+</body>
+</html>

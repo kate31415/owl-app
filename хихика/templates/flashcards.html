@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Флеш-карточки</title>
+</head>
+<body>
+  <h1>Флеш-карточки</h1>
+  <p>Слово: <strong>{{ word }}</strong></p>
+  <form method="post">
+    <button name="action" value="show">Показать перевод</button>
+    {% if translation %}
+      <p>Перевод: <strong>{{ translation }}</strong></p>
+      <button name="action" value="next">Следующее слово</button>
+    {% endif %}
+  </form>
+  <a href="/">На главную</a>
+</body>
+</html>

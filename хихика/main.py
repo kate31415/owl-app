@@ -1,6 +1,9 @@
 import customtkinter
 from Dict import Dict, Learning
+from User import User
 from UserStats import UserStats
+from gamess import GamesPanel
+
 import json
 import os
 import textwrap
@@ -8,9 +11,14 @@ from bs4 import BeautifulSoup
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import datetime
-import random
-import webbrowser
 from tkinter import messagebox
+import tkinter as tk
+from tkinter import ttk
+import logging
+
+logging.basicConfig(filename="app.log", filemode="a", format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 class User:
     def __init__(self, username, password):
@@ -38,6 +46,7 @@ class User:
         return self.dictionary.get(word, {"definition": "Слово не найдено", "example": "", "transcription": "", "translation": ""})
 
 class ProgressTracker:
+
     def __init__(self, data_file="users.json"):
         self.data_file = data_file
         self.users = {}
@@ -71,19 +80,72 @@ class ProgressTracker:
             return False
         self.users[username] = User(username, password)
         self.save_data()
+        logger.info(f"Новый пользователь зарегистрирован: {username}")
         return True
 
     def authenticate(self, username, password):
         user = self.users.get(username)
         if user and user.password == password:
+            logger.info(f"Пользователь вошёл: {username}")
             return user
+        logger.warning(f"Ошибка авторизации: {username}")
         return None
+
+    def autosave(self):
+        self.save_data()
+        logger.info("Автосохранение данных выполнено.")
 
     def update_study_time(self, username, study_duration):
         self.user_stats.update_study_time(username, study_duration)
 
     def get_user_stats(self, username):
         return self.user_stats.get_user_stats(username)
+    
+
+class UserStatsApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Статистика пользователей")
+        self.user_stats = UserStats()
+
+        # Создаем интерфейс
+        self.create_widgets()
+
+    def create_widgets(self):
+        # Поле для ввода имени пользователя
+        tk.Label(self.root, text="Имя пользователя:").grid(row=0, column=0, padx=10, pady=5)
+        self.username_entry = tk.Entry(self.root)
+        self.username_entry.grid(row=0, column=1, padx=10, pady=5)
+
+        # Кнопка для получения статистики
+        tk.Button(self.root, text="Показать статистику", command=self.show_user_stats).grid(row=0, column=2, padx=10, pady=5)
+
+        # Таблица для отображения данных
+        columns = ("Параметр", "Значение")
+        self.tree = ttk.Treeview(self.root, columns=columns, show="headings")
+        self.tree.heading("Параметр", text="Параметр")
+        self.tree.heading("Значение", text="Значение")
+        self.tree.grid(row=1, column=0, columnspan=3, padx=10, pady=10)
+
+    def show_user_stats(self):
+        # Очистка таблицы перед обновлением
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        # Получение имени пользователя
+        username = self.username_entry.get()
+        if not username:
+            self.tree.insert("", "end", values=("Ошибка", "Введите имя пользователя"))
+            return
+
+        # Получение статистики пользователя
+        stats = self.user_stats.get_user_stats(username)
+
+        # Отображение данных в таблице
+        self.tree.insert("", "end", values=("Общее время обучения (сек)", stats["total_study_time"]))
+        self.tree.insert("", "end", values=("Количество дней подряд", stats["streak_days"]))
+        self.tree.insert("", "end", values=("Последняя дата обучения", stats["last_study_date"]))
+        self.tree.insert("", "end", values=("Награды", ", ".join(map(str, stats["rewards"]))))
 
 class App(customtkinter.CTk):
     def __init__(self):
@@ -93,6 +155,7 @@ class App(customtkinter.CTk):
         self.tracker = ProgressTracker()
         self.current_user = None
         self.learning = Learning()
+
         self.create_main_menu()
 
     def create_main_menu(self):
@@ -159,10 +222,14 @@ class App(customtkinter.CTk):
         label.pack(pady=10)
         add_word_button = customtkinter.CTkButton(self, text="Добавить слово", command=self.add_word_from_dict_ui)
         add_word_button.pack(pady=5)
-        view_progress_button = customtkinter.CTkButton(self, text="Просмотреть прогресс", command=self.view_progress_ui)
+        view_progress_button = customtkinter.CTkButton(self, text="Список слов", command=self.view_progress_ui)
         view_progress_button.pack(pady=5)
-        show_chart_button = customtkinter.CTkButton(self, text="Показать диаграмму прогресса", command=self.show_progress_chart)
+        show_chart_button = customtkinter.CTkButton(self, text="Показать график прогресса", command=self.show_progress_chart)
         show_chart_button.pack(pady=5)
+        show_chart_button = customtkinter.CTkButton(self, text="Информация о прогрессе", command=self.show_progress_chart)
+        show_chart_button.pack(pady=5)
+        play_games_button = customtkinter.CTkButton(self, text="Игры со словами", command=lambda: GamesPanel(self, self.current_user, self.learning))
+        play_games_button.pack(pady=5)
         logout_button = customtkinter.CTkButton(self, text="Выйти", command=self.logout)
         logout_button.pack(pady=5)
 
@@ -270,14 +337,11 @@ class App(customtkinter.CTk):
             error_label = customtkinter.CTkLabel(word_info_window, text="Слово не найдено в словаре.", font=("Arial", 14), text_color="red")
             error_label.pack(pady=5)
         else:
-            # definition_label = customtkinter.CTkLabel(word_info_window, text=textwrap.fill(f"Определение: {definition}", width=50), font=("Arial", 14))
-            # definition_label.pack(pady=5)
+            translation_label = customtkinter.CTkLabel(word_info_window, text=textwrap.fill(f"Перевод: {translation}", width=50), font=("Arial", 14))
+            translation_label.pack(pady=5)
 
             transcription_label = customtkinter.CTkLabel(word_info_window, text=f"Транскрипция: {transcription}", font=("Arial", 14))
             transcription_label.pack(pady=5)
-
-            translation_label = customtkinter.CTkLabel(word_info_window, text=textwrap.fill(f"Перевод: {translation}", width=50), font=("Arial", 14))
-            translation_label.pack(pady=5)
 
             example_label = customtkinter.CTkLabel(word_info_window, text=textwrap.fill(f"Пример: {example}", width=50), font=("Arial", 14))
             example_label.pack(pady=5)
@@ -287,7 +351,7 @@ class App(customtkinter.CTk):
 
     def show_progress_chart(self):
         progress_window = customtkinter.CTkToplevel(self)
-        progress_window.title("Диаграмма прогресса")
+        progress_window.title("График прогресса")
         progress_window.geometry("800x600")
         progress = self.current_user.get_progress()
         if not progress:

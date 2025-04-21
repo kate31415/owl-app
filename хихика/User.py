@@ -1,6 +1,11 @@
 import json
 import os
+import logging
 from UserStats import UserStats
+
+logging.basicConfig(filename="app.log", filemode="a", format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 class User:
     def __init__(self, username, password):
@@ -28,6 +33,7 @@ class User:
         return self.dictionary.get(word, {"definition": "Слово не найдено", "example": "", "transcription": "", "translation": ""})
 
 class ProgressTracker:
+
     def __init__(self, data_file="users.json"):
         self.data_file = data_file
         self.users = {}
@@ -61,16 +67,24 @@ class ProgressTracker:
             return False
         self.users[username] = User(username, password)
         self.save_data()
+        logger.info(f"Новый пользователь зарегистрирован: {username}")
         return True
 
     def authenticate(self, username, password):
         user = self.users.get(username)
         if user and user.password == password:
+            logger.info(f"Пользователь вошёл: {username}")
             return user
+        logger.warning(f"Ошибка авторизации: {username}")
         return None
+
+    def autosave(self):
+        self.save_data()
+        logger.info("Автосохранение данных выполнено.")
 
     def update_study_time(self, username, study_duration):
         self.user_stats.update_study_time(username, study_duration)
 
     def get_user_stats(self, username):
         return self.user_stats.get_user_stats(username)
+    

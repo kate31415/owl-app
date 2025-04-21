@@ -1,4 +1,6 @@
-import os  
+import json
+import os
+
 import webbrowser  
 import requests  
 from bs4 import BeautifulSoup  
@@ -53,6 +55,46 @@ class Learning:
     def __init__(self):  
         self.dict = Dict()  
 
+    def load_themes_from_json(self):
+        file_path = os.path.join(os.path.dirname(__file__), "themes.json")
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as file:
+                return json.load(file)
+        else:
+            raise FileNotFoundError("Файл themes.json не найден!")
+
+    def get_words_by_theme(self, theme_name):
+        return self.themes.get(theme_name.lower(), {})
+
+    def add_word_to_user_dict(self, user, word, translation):
+        user.add_word(
+            word,
+            definition="",
+            example=f"Пример использования: {word} - это {translation}.",
+            transcription="Транскрипция отсутствует",
+            translation=translation
+        )
+
+    def load_themes_from_json(self):
+        file_path = os.path.join(os.path.dirname(__file__), "themes.json")
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as file:
+                return json.load(file)
+        else:
+            raise FileNotFoundError("Файл themes.json не найден!")
+
+    def get_words_by_theme(self, theme_name):
+        return self.themes.get(theme_name.lower(), {})
+
+    def add_word_to_user_dict(self, user, word, translation):
+        user.add_word(
+            word,
+            definition="",
+            example=f"Пример использования: {word} - это {translation}.",
+            transcription="Транскрипция отсутствует",
+            translation=translation
+        )
+
     # def view_word_page(self, word):  
     #     try:  
     #         html_file = f"{word}_page.html"  
@@ -63,15 +105,15 @@ class Learning:
     #     except Exception as e:  
     #         print(f"Ошибка при открытии страницы: {e}")  
 
-    def add_word_from_dict(self, word):
-        word_info = self.dict.fetch_word_info(word)
-        if word_info is None:
-            return {
-                "example": "Слово не найдено",
-                "transcription": "Транскрипция не найдена",
-                "translation": "Перевод не найден"
-            }
-        return word_info
+    # def add_word_from_dict(self, word):
+    #     word_info = self.dict.fetch_word_info(word)
+    #     if word_info is None:
+    #         return {
+    #             "example": "Слово не найдено",
+    #             "transcription": "Транскрипция не найдена",
+    #             "translation": "Перевод не найден"
+    #         }
+    #     return word_info
 
     # def add_word_from_dict(self, word):  
     #     word_info = self.dict.fetch_word_info(word)  
