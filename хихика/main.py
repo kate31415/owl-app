@@ -1,6 +1,6 @@
 import customtkinter
 from Dict import Dict, Learning
-from User import User
+from User import User, ProgressTracker
 from UserStats import UserStats
 from gamesss import GamesPanel
 
@@ -15,101 +15,17 @@ from tkinter import messagebox
 import tkinter as tk
 from tkinter import ttk
 import logging
+import random
 
 logging.basicConfig(filename="app.log", filemode="a", format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-class User:
-    def __init__(self, username, password):
-        self.username = username
-        self.password = password
-        self.progress = {}
-        self.dictionary = {}
-
-    def add_word(self, word, definition="", example="", transcription="", translation=""):
-        if word not in self.progress:
-            self.progress[word] = 0
-        self.progress[word] += 1
-        if word not in self.dictionary:
-            self.dictionary[word] = {
-                "definition": definition,
-                "example": example,
-                "transcription": transcription,
-                "translation": translation
-            }
-
-    def get_progress(self):
-        return self.progress
-
-    def get_word_info(self, word):
-        return self.dictionary.get(word, {"definition": "Слово не найдено", "example": "", "transcription": "", "translation": ""})
-
-class ProgressTracker:
-
-    def __init__(self, data_file="users.json"):
-        self.data_file = data_file
-        self.users = {}
-        self.user_stats = UserStats()
-        self.load_data()
-
-    def load_data(self):
-        if os.path.exists(self.data_file):
-            with open(self.data_file, "r") as file:
-                data = json.load(file)
-                for username, user_data in data.items():
-                    user = User(username, user_data["password"])
-                    user.progress = user_data.get("progress", {})
-                    user.dictionary = user_data.get("dictionary", {})
-                    self.users[username] = user
-
-    def save_data(self):
-        data = {
-            username: {
-                "password": user.password,
-                "progress": user.progress,
-                "dictionary": user.dictionary,
-            }
-            for username, user in self.users.items()
-        }
-        with open(self.data_file, "w") as file:
-            json.dump(data, file, indent=4)
-
-    def register_user(self, username, password):
-        if username in self.users:
-            return False
-        self.users[username] = User(username, password)
-        self.save_data()
-        logger.info(f"Новый пользователь зарегистрирован: {username}")
-        return True
-
-    def authenticate(self, username, password):
-        user = self.users.get(username)
-        if user and user.password == password:
-            logger.info(f"Пользователь вошёл: {username}")
-            return user
-        logger.warning(f"Ошибка авторизации: {username}")
-        return None
-
-    def autosave(self):
-        self.save_data()
-        logger.info("Автосохранение данных выполнено.")
-
-    def update_study_time(self, username, study_duration):
-        self.user_stats.update_study_time(username, study_duration)
-
-    def get_user_stats(self, username):
-        return self.user_stats.get_user_stats(username)
-    
 
 
 class UserStatsApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Статистика пользователей")
-        self.user_stats = UserStats()
-
-        # Создаем интерфейс
+        self.tracker = ProgressTracker()
         self.create_widgets()
 
     def create_widgets(self):
@@ -126,7 +42,7 @@ class UserStatsApp:
         self.tree = ttk.Treeview(self.root, columns=columns, show="headings")
         self.tree.heading("Параметр", text="Параметр")
         self.tree.heading("Значение", text="Значение")
-        self.tree.grid(row=1, column=0, columnspan=3, padx=10, pady=10)
+        self.tree.grid(row=2, column=0, columnspan=3, padx=10, pady=10)
 
     def show_user_stats(self):
         # Очистка таблицы перед обновлением
@@ -139,14 +55,19 @@ class UserStatsApp:
             self.tree.insert("", "end", values=("Ошибка", "Введите имя пользователя"))
             return
 
-        # Получение статистики пользователя
-        stats = self.user_stats.get_user_stats(username)
+        # Получение статистики пользователя из ProgressTracker
+        stats = self.tracker.get_user_stats(username)
 
         # Отображение данных в таблице
         self.tree.insert("", "end", values=("Общее время обучения (сек)", stats["total_study_time"]))
         self.tree.insert("", "end", values=("Количество дней подряд", stats["streak_days"]))
         self.tree.insert("", "end", values=("Последняя дата обучения", stats["last_study_date"]))
         self.tree.insert("", "end", values=("Награды", ", ".join(map(str, stats["rewards"]))))
+        self.tree.insert("", "end", values=("Слова", ", ".join(stats["words"])))
+
+        # Автоматическое расширение столбцов
+        self.tree.column("Параметр", width=200, stretch=True)
+        self.tree.column("Значение", width=400, stretch=True)
 
 class App(customtkinter.CTk):
     def __init__(self):
@@ -227,12 +148,23 @@ class App(customtkinter.CTk):
         view_progress_button.pack(pady=5)
         show_chart_button = customtkinter.CTkButton(self, text="Показать график прогресса", command=self.show_progress_chart)
         show_chart_button.pack(pady=5)
-        show_chart_button = customtkinter.CTkButton(self, text="Информация о прогрессе", command=self.show_progress_chart)
+        show_chart_button = customtkinter.CTkButton(self, text="Информация о прогрессе", command=self.show_user_stats)
         show_chart_button.pack(pady=5)
         play_games_button = customtkinter.CTkButton(self, text="Игры со словами", command=lambda: GamesPanel(self, self.current_user, self.learning))
         play_games_button.pack(pady=5)
         logout_button = customtkinter.CTkButton(self, text="Выйти", command=self.logout)
         logout_button.pack(pady=5)
+
+    def show_user_stats(self):
+        # Создание нового окна для статистики пользователя
+        stats_window = customtkinter.CTkToplevel(self)
+        stats_window.title("Статистика пользователя")
+        stats_window.geometry("500x400")
+        
+        # Открытие окна с информацией о прогрессе
+        user_stats_app = UserStatsApp(stats_window)
+        
+        stats_window.mainloop()
 
     def add_word_from_dict_ui(self):
         add_word_window = customtkinter.CTkToplevel(self)
@@ -242,6 +174,8 @@ class App(customtkinter.CTk):
         label.pack(pady=10)
         word_entry = customtkinter.CTkEntry(add_word_window, placeholder_text="Введите слово")
         word_entry.pack(pady=5)
+
+
 
         def handle_add_word():
             word = word_entry.get().strip().lower()
@@ -259,6 +193,7 @@ class App(customtkinter.CTk):
                         transcription=word_info.get("transcription", ""),
                         translation=word_info.get("translation", "")
                     )
+                    self.tracker.save_data()
                     messagebox.showinfo("Успешно", f"Слово '{word}' добавлено!")
                     reward_message = self.tracker.user_stats.check_rewards(self.current_user.username)
                     if reward_message:
@@ -349,6 +284,40 @@ class App(customtkinter.CTk):
 
         back_button = customtkinter.CTkButton(word_info_window, text="Назад", command=word_info_window.destroy)
         back_button.pack(pady=10)
+
+    def start_game(self):
+        # Проверяем, что выбрал пользователь
+        game_source = self.game_source_var.get()
+
+        # Если выбран источник "Изученные слова"
+        if game_source == "Изученные слова":
+            words = self.learning.get_progress_data()
+
+        # Если выбран источник "Темы"
+        elif game_source == "Темы":
+            theme_name = self.theme_var.get()
+            words = self.learning.get_words_by_theme(theme_name)
+
+        # Если нет слов в выбранном источнике
+        if not words:
+            self.game_output.delete("1.0", "end")
+            self.game_output.insert("1.0", "Нет доступных слов для игры!")
+            return
+
+        # Выбираем случайное слово из списка
+        word = random.choice(list(words.keys()))
+
+        # Если это изученное слово, то получаем правильный ответ через словарь
+        if game_source == "Изученные слова":
+            self.correct_answer = words[word]["translation"]
+        else:
+            # Если это слово из темы, то предполагаем, что правильный ответ - само слово
+            self.correct_answer = words[word]
+
+        self.current_word = word
+
+        self.game_output.delete("1.0", "end")
+        self.game_output.insert("1.0", f"Переведите слово: {word}\nВведите перевод и нажмите 'Проверить ответ'")
 
     def show_progress_chart(self):
         progress_window = customtkinter.CTkToplevel(self)
