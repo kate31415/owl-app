@@ -1,7 +1,10 @@
-
 import customtkinter as ctk
 import random
+import tkinter as tk
 from tkinter import messagebox
+from Dict import Dict, Learning
+
+# ПОЧЕМУ ДОСТУП К ДИКУ НЕ ОСУЩЕСТВЛЯЕТСЯ
 
 class GamesPanel(ctk.CTkToplevel):
     def __init__(self, master, user, learning):
@@ -10,20 +13,78 @@ class GamesPanel(ctk.CTkToplevel):
         self.geometry("600x500")
         self.user = user
         self.learning = learning
-        self.words_list = list(self.user.dictionary.items())
+        self.words_list = list(self.user.dictionary.items())  # Слова пользователя
+        self.themes_words = {}  # Слова из тем
+        self.current_source = "Изученные слова"  # Источник слов по умолчанию
+        self.theme_var = tk.StringVar()
+        themes_list = list(self.learning.themes.keys()) or ["еда"]  # запасной вариант
+        self.theme_var.set(themes_list[0])
 
-        self.radio_button_study = ctk.CTkRadioButton(self.game_source_frame, text="Изученные слова", variable=self.game_source_var, value="Изученные слова")
-        self.radio_button_study.pack(side=сtk.LEFT, padx=10)
 
-        self.radio_button_themes = ctk.CTkRadioButton(self.game_source_frame, text="Темы", variable=self.game_source_var, value="Темы")
-        self.radio_button_themes.pack(side=tk.LEFT, padx=10)
+        # Фрейм для выбора источника слов
+        self.game_source_frame = ctk.CTkFrame(self)
+        self.game_source_frame.pack(pady=10)
 
+        self.game_source_var = ctk.StringVar(value="Изученные слова")
+
+        self.radio_button_study = ctk.CTkRadioButton(
+            self.game_source_frame,
+            text="Изученные слова",
+            variable=self.game_source_var,
+            value="Изученные слова",
+            command=self.update_word_source
+        )
+        self.radio_button_study.pack(side="left", padx=10)
+
+        self.radio_button_themes = ctk.CTkRadioButton(
+            self.game_source_frame,
+            text="Темы",
+            variable=self.game_source_var,
+            value="Темы",
+            command=self.update_word_source
+        )
+        self.radio_button_themes.pack(side="left", padx=10)
+
+        # Вкладки для игр
         self.tabview = ctk.CTkTabview(self)
         self.tabview.pack(expand=True, fill="both", padx=10, pady=10)
 
         self.create_flashcards_tab()
         self.create_quiz_tab()
         self.create_match_tab()
+
+    def get_progress_data(self):
+        return self.learning.user_words
+
+    def show_learned_words(self):
+        # Получаем все слова, которые были изучены
+        learned_words = self.learning.get_progress_data()
+
+        # Формируем список из всех изученных слов
+        learned_words_list = "\n".join([f"{word}: {info['translation']}" for word, info in learned_words.items()])
+
+        # Если слов нет, показываем сообщение
+        if not learned_words_list:
+            learned_words_list = "Вы еще не изучили ни одного слова."
+
+    def update_word_source(self):
+        """Обновляет источник слов для игр."""
+        source = self.game_source_var.get()
+        if source == "Изученные слова":
+            self.current_source = "Изученные слова"
+            self.words_list = list(self.user.dictionary.items())
+        elif source == "Темы":
+            self.current_source = "Темы"
+            self.load_theme_words()
+
+    def get_words_by_theme(self, theme_name):
+        return self.themes.get(theme_name.lower(), {})
+
+    def load_theme_words(self):
+        """Загружает слова из тем."""
+        theme_name = "default"  # Здесь можно добавить выбор темы через интерфейс
+        self.themes_words = self.learning.get_words_by_theme(theme_name)
+        self.words_list = list(self.themes_words.items())
 
     def create_flashcards_tab(self):
         self.flash_tab = self.tabview.add("Флеш-карточки")
@@ -37,7 +98,7 @@ class GamesPanel(ctk.CTkToplevel):
 
     def new_flashcard(self):
         if not self.words_list:
-            self.flash_word_label.configure(text="Нет слов в словаре пользователя.")
+            self.flash_word_label.configure(text="Нет слов для игры.")
             self.flash_result_label.configure(text="")
             return
         self.current_flash = random.choice(self.words_list)
@@ -80,7 +141,7 @@ class GamesPanel(ctk.CTkToplevel):
         if selected == self.quiz_correct:
             self.quiz_result_label.configure(text="✅ Верно!")
         else:
-            self.quiz_result_label.configure(text=f"❌ Неверно! Правильный ответ: {self.quiz_correct}")
+            self.quiz_result_label.configure(text=f"❌ Неверно! Правильный ответ: {self.quiz_correct.strip()}")
         self.after(2000, self.load_quiz)
 
     def create_match_tab(self):

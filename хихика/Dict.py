@@ -52,6 +52,9 @@ class Learning:
         self.dict = Dict()
         self.user_words = {}  # Словарь изученных слов
         self.themes = self.load_themes_from_json()
+        self.points = 0  # Очки игрока
+        self.level = 1   # Начальный уровень
+        self.user_words = {}
 
     def load_themes_from_json(self):
         file_path = os.path.join(os.path.dirname(__file__), "themes.json")
@@ -61,9 +64,6 @@ class Learning:
                     return json.load(file)
             except json.JSONDecodeError as e:
                 print(f"Ошибка в формате JSON: {e}")
-                return {}
-            except Exception as e:
-                print(f"Ошибка при загрузке файла: {e}")
                 return {}
         else:
             print("Файл themes.json не найден!")
