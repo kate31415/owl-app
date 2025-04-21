@@ -67,7 +67,6 @@ class Learning:
         app_instance.tracker.save_data()
         app_instance.show_message(
             f"Слово '{word}' добавлено!\n"
-            f"Определение: {definition}\n"
             f"Транскрипция: {transcription}\n"
             f"Перевод: {translation}\n"
             f"Пример: {example}"

@@ -7,14 +7,20 @@
     },
     "1": {
         "total_study_time": 5,
-        "streak_days": 4,
-        "last_study_date": "2025-04-19",
+        "streak_days": 5,
+        "last_study_date": "2025-04-21",
         "rewards": []
     },
     "kate": {
         "total_study_time": 0,
         "streak_days": 1,
         "last_study_date": "2025-03-18",
+        "rewards": []
+    },
+    "2": {
+        "total_study_time": 0,
+        "streak_days": 1,
+        "last_study_date": "2025-04-21",
         "rewards": []
     }
 }

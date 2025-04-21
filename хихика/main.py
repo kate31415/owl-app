@@ -2,7 +2,7 @@ import customtkinter
 from Dict import Dict, Learning
 from User import User
 from UserStats import UserStats
-from gamess import GamesPanel
+from gamesss import GamesPanel
 
 import json
 import os
@@ -101,6 +101,7 @@ class ProgressTracker:
     def get_user_stats(self, username):
         return self.user_stats.get_user_stats(username)
     
+
 
 class UserStatsApp:
     def __init__(self, root):
@@ -246,7 +247,7 @@ class App(customtkinter.CTk):
             word = word_entry.get().strip().lower()
             if word:
                 start_time = datetime.datetime.now()
-                word_info = self.learning.add_word_from_dict(word)
+                word_info = self.learning.add_word(word)
                 end_time = datetime.datetime.now()
                 study_duration = (end_time - start_time).seconds
                 self.tracker.update_study_time(self.current_user.username, study_duration)

@@ -3,7 +3,7 @@ import json
 import datetime
 import tkinter as tk
 from tkinter import ttk
-from datetime import datetime
+
 
 class UserStats:
     def __init__(self, data_file="user_stats.json"):

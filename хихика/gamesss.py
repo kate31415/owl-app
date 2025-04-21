@@ -1,11 +1,7 @@
 
 import customtkinter as ctk
 import random
-import logging
 from tkinter import messagebox
-
-logging.basicConfig(filename="app.log", filemode="a", format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 class GamesPanel(ctk.CTkToplevel):
     def __init__(self, master, user, learning):
@@ -55,55 +51,24 @@ class GamesPanel(ctk.CTkToplevel):
         self.quiz_buttons_frame.pack(pady=5)
         self.load_quiz()
 
-    # def load_quiz(self):
-    #     if len(self.words_list) < 4:
-    #         self.quiz_word_label.configure(text="Добавьте больше слов для викторины.")
-    #         return
-    #     for widget in self.quiz_buttons_frame.winfo_children():
-    #         widget.destroy()
-
-    #     word, correct_info = random.choice(self.words_list)
-    #     correct = correct_info["translation"]
-    #     self.quiz_word_label.configure(text=word)
-    #     self.quiz_correct = correct
-    #     # Формируем список доступных вариантов
-    #     available_options = [v["translation"] for k, v in self.words_list if v["translation"] != correct]
-
-    #     # Проверяем, достаточно ли элементов для выборки
-    #     if len(available_options) < 3:
-    #         logger.error("Недостаточно слов для создания опций викторины.")
-    #         messagebox.showerror("Ошибка", "Недостаточно слов для игры. Добавьте больше слов в словарь.")
-    #         return
-
-    #     # Создаём варианты ответов
-    #     options = [correct] + random.sample(available_options, 3)
-    #     random.shuffle(options)
-
     def load_quiz(self):
-        # Выбираем случайное слово для вопроса
-        word, data = random.choice(self.words_list)
-        correct = data["translation"]
-        # Формируем список доступных вариантов
-        available_options = [v["translation"] for k, v in self.words_list if v["translation"] != correct]
-        # Проверяем, достаточно ли элементов для выборки
-        if len(available_options) < 3:
-            logger.error("Недостаточно слов для создания опций викторины.")
-            messagebox.showerror("Ошибка", "Недостаточно слов для игры. Добавьте больше слов в словарь.")
+        if len(self.words_list) < 4:
+            self.quiz_word_label.configure(text="Добавьте больше слов для викторины.")
             return
-        # Создаём варианты ответов
-        options = [correct] + random.sample(available_options, 3)
-        # Перемешиваем варианты
+        for widget in self.quiz_buttons_frame.winfo_children():
+            widget.destroy()
+
+        word, correct_info = random.choice(self.words_list)
+        correct = correct_info["translation"]
+        self.quiz_word_label.configure(text=word)
+        self.quiz_correct = correct
+        options = [correct] + random.sample(
+            [v["translation"] for k, v in self.words_list if v["translation"] != correct], 3)
         random.shuffle(options)
-        # Обновляем интерфейс
-        self.update_quiz_ui(word, options)
 
         for option in options:
             btn = ctk.CTkButton(self.quiz_buttons_frame, text=option, command=lambda o=option: self.check_quiz(o))
             btn.pack(pady=2)
-            
-        if not self.words_list:
-            messagebox.showerror("Ошибка", "Словарь пуст. Добавьте слова для игры.")
-            return
 
     def check_quiz(self, selected):
         if selected == self.quiz_correct:
